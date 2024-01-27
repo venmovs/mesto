@@ -43,7 +43,7 @@ const getUsers = (req: Request, res: Response, next: NextFunction) => User.find(
 const getUser = (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params;
   return User.findById(userId)
-    .orFail()
+    .then((user) => res.send(user))
     .catch((error) => {
       if (error instanceof Error.CastError) {
         return next(new ValidationError(ERROR_MESSAGE_BAD_REQUEST));

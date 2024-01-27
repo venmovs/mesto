@@ -33,7 +33,7 @@ const validateAvatar = celebrate({
 
 const validateId = celebrate({
   params: Joi.object().keys({
-    id: Joi.string().required().hex(),
+    userId: Joi.string().required().hex(),
   }),
 });
 
