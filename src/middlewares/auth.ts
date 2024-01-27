@@ -1,32 +1,33 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import { STATUS_UNAUTHORIZED } from '../helpers/constants/statuses';
 import errors from '../errors';
 import { ERROR_MESSAGE_SERVER } from '../helpers/constants/messages';
 
-const { ServerError } = errors;
+const { ServerError, AuthorizationError } = errors;
 interface SessionRequest extends Request {
   user?: string | JwtPayload;
 }
 
 dotenv.config();
 
-const secretKey = process.env.JWT_SECRET;
+const secretKey = process.env.JWT_SECRET || 'super-secret-key';
 
-const handleAuthError = (res: Response) => {
-  res.status(STATUS_UNAUTHORIZED).send({ message: 'Необходима авторизация' });
+const handleAuthError = (next: NextFunction) => {
+  next(new AuthorizationError('Необходима авторизация'));
 };
-
-const extractBearerToken = (header: string) => header.replace('Bearer ', '');
 const auth = (req: SessionRequest, res: Response, next: NextFunction) => {
   const { authorization } = req.headers;
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
-    return handleAuthError(res);
+    return handleAuthError(next);
   }
 
-  const token = extractBearerToken(authorization);
+  const token = req.cookies.jwt;
+
+  if (!token) {
+    next(new AuthorizationError('Необходима авторизация'));
+  }
   let payload;
 
   try {
@@ -35,7 +36,7 @@ const auth = (req: SessionRequest, res: Response, next: NextFunction) => {
     }
     payload = jwt.verify(token, secretKey);
   } catch (err) {
-    return handleAuthError(res);
+    return handleAuthError(next);
   }
 
   req.user = payload;

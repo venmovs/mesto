@@ -7,7 +7,7 @@ const validateLogin = celebrate({
   }),
 });
 
-const avatarRegexp = /^https?:\/\/(www\.)?([\w-]+\.['w+])\s*$/;
+const avatarRegexp = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[a-zA-Z0-9-._~:/?#[\]@!$&'()*+,;=]*)?$/;
 const validateUser = celebrate({
   body: Joi.object().keys({
     name: Joi.string().min(2).max(30),
@@ -31,9 +31,15 @@ const validateAvatar = celebrate({
   },
 });
 
-const validateId = celebrate({
+const validateUserId = celebrate({
   params: Joi.object().keys({
-    userId: Joi.string().required().hex(),
+    userId: Joi.string().required().hex().length(24),
+  }),
+});
+
+const validateCardId = celebrate({
+  params: Joi.object().keys({
+    cardId: Joi.string().required().hex().length(24),
   }),
 });
 
@@ -50,7 +56,8 @@ const validator = {
   validateUserInfo,
   validateAvatar,
   validateCard,
-  validateId,
+  validateUserId,
+  validateCardId,
 };
 
 export default validator;

@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class ServerError extends Error {
   private statusCode: number;
 

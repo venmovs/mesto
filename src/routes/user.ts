@@ -2,7 +2,7 @@ import { Router } from 'express';
 import controllers from '../controllers';
 import middlewares from '../middlewares';
 
-const { validateAvatar, validateId, validateUserInfo } = middlewares.validator;
+const { validateAvatar, validateUserId, validateUserInfo } = middlewares.validator;
 const router = Router();
 
 const {
@@ -11,7 +11,7 @@ const {
 
 router.get('/', getUsers);
 router.get('/me', getUserMe);
-router.get('/:userId', validateId, getUser);
+router.get('/:userId', validateUserId, getUser);
 router.patch('/me', validateUserInfo, updateUserInfo);
 router.patch('/me/avatar', validateAvatar, updateUserAvatar);
 

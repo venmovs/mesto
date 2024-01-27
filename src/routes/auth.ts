@@ -7,7 +7,7 @@ const { validateLogin, validateUser } = middlewares.validator;
 
 const router = Router();
 
-router.get('/signin', validateLogin, login);
-router.get('/signup', validateUser, register);
+router.post('/signin', validateLogin, login);
+router.post('/signup', validateUser, register);
 
 export default router;

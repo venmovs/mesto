@@ -2,7 +2,7 @@ import { Router } from 'express';
 import controllers from '../controllers';
 import middlewares from '../middlewares';
 
-const { validateCard, validateId } = middlewares.validator;
+const { validateCard, validateCardId } = middlewares.validator;
 const router = Router();
 
 const {
@@ -11,8 +11,8 @@ const {
 
 router.get('/', getCards);
 router.post('/', validateCard, createCard);
-router.delete('/:cardId', validateId, deleteCard);
-router.put('/:cardId/likes', validateId, likeCard);
-router.delete('/:cardId/likes', validateId, dislikeCard);
+router.delete('/:cardId', validateCardId, deleteCard);
+router.put('/:cardId/likes', validateCardId, likeCard);
+router.delete('/:cardId/likes', validateCardId, dislikeCard);
 
 export default router;

@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class ForbiddenError extends Error {
   private statusCode: number;
 

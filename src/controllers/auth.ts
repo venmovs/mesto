@@ -11,7 +11,7 @@ import errors from '../errors';
 
 dotenv.config();
 
-const secretKey = process.env.JWT_SECRET;
+const secretKey = process.env.JWT_SECRET || 'super-secret-key';
 const User = models.user;
 
 const {

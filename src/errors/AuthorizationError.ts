@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class AuthorizationError extends Error {
   private statusCode: number;
 

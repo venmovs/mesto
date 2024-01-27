@@ -14,6 +14,7 @@ const {
 
 const Card = models.card;
 const getCards = (req: Request, res: Response, next: NextFunction) => Card.find({})
+  .orFail()
   .then((cards) => res.send({ data: cards }))
   .catch(() => next(new ServerError(ERROR_MESSAGE_SERVER)));
 
@@ -37,7 +38,7 @@ const deleteCard = (req: SessionRequest, res: Response, next: NextFunction) => {
   Card.findById(cardId)
     .orFail()
     .then((card) => {
-      if (req.user?._id !== card.owner) {
+      if (req.user?._id !== String(card.owner)) {
         next(new ForbiddenError(ERROR_MESSAGE_BAD_REQUEST));
       } else {
         Card.findByIdAndDelete(cardId)
@@ -59,14 +60,14 @@ const deleteCard = (req: SessionRequest, res: Response, next: NextFunction) => {
 };
 
 const likeCard = (req: SessionRequest, res: Response, next: NextFunction) => {
-  const owner = { _id: req.user?._id };
   const { cardId } = req.params;
 
   return Card.findByIdAndUpdate(
     cardId,
-    { $addToSet: { likes: owner } },
+    { $addToSet: { likes: req.user?._id } },
     { new: true, runValidators: true },
   )
+    .orFail()
     .then((card) => {
       if (!card) {
         res
@@ -85,33 +86,34 @@ const likeCard = (req: SessionRequest, res: Response, next: NextFunction) => {
     });
 };
 
-const dislikeCard = (req: SessionRequest, res: Response, next: NextFunction) => {
-  const owner = { _id: req.user?._id };
-
-  return Card.findByIdAndUpdate(
-    req.params.cardId,
-    { $pull: { likes: owner } },
-    { new: true, runValidators: true },
-  )
-    .then((card) => {
-      if (!card) {
-        res
-          .status(STATUS_ERROR_ID)
-          .send({ message: ERROR_MESSAGE_ID });
-      } else {
-        res.send(card);
-      }
-    })
-    .catch((error) => {
-      if (error instanceof Error.DocumentNotFoundError) {
-        next(new NotFoundError(ERROR_MESSAGE_ID));
-      } else if (error instanceof Error.CastError) {
-        next(new ValidationError(ERROR_MESSAGE_ID));
-      } else {
-        next(new ServerError(ERROR_MESSAGE_SERVER));
-      }
-    });
-};
+const dislikeCard = (
+  req: SessionRequest,
+  res: Response,
+  next: NextFunction,
+) => Card.findByIdAndUpdate(
+  req.params.cardId,
+  { $pull: { likes: req.user?._id } },
+  { new: true, runValidators: true },
+)
+  .orFail()
+  .then((card) => {
+    if (!card) {
+      res
+        .status(STATUS_ERROR_ID)
+        .send({ message: ERROR_MESSAGE_ID });
+    } else {
+      res.send(card);
+    }
+  })
+  .catch((error) => {
+    if (error instanceof Error.DocumentNotFoundError) {
+      next(new NotFoundError(ERROR_MESSAGE_ID));
+    } else if (error instanceof Error.CastError) {
+      next(new ValidationError(ERROR_MESSAGE_ID));
+    } else {
+      next(new ServerError(ERROR_MESSAGE_SERVER));
+    }
+  });
 export default {
   getCards, createCard, deleteCard, likeCard, dislikeCard,
 };

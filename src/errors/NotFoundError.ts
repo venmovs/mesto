@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class NotFoundError extends Error {
   public statusCode: number;
 

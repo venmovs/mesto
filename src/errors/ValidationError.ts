@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class ValidationError extends Error {
   private statusCode: number;
 

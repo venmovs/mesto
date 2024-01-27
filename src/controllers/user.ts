@@ -23,9 +23,9 @@ const getUserMe = (
   res: Response,
   next: NextFunction,
 ) => {
-  console.info(req);
   const userId = req.user?._id;
   return User.findById(userId)
+    .orFail()
     .then((user) => {
       if (!user) {
         throw new NotFoundError(ERROR_MESSAGE_ID);
@@ -37,12 +37,14 @@ const getUserMe = (
 };
 
 const getUsers = (req: Request, res: Response, next: NextFunction) => User.find({})
+  .orFail()
   .then((users) => res.send(users))
   .catch(() => next(new ServerError(ERROR_MESSAGE_SERVER)));
 
 const getUser = (req: Request, res: Response, next: NextFunction) => {
   const { userId } = req.params;
   return User.findById(userId)
+    .orFail()
     .then((user) => res.send(user))
     .catch((error) => {
       if (error instanceof Error.CastError) {

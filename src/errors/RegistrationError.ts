@@ -1,5 +1,3 @@
-import { Error } from 'mongoose';
-
 class RegistrationError extends Error {
   private statusCode: number;
 
