@@ -1,7 +1,6 @@
 import winston from 'winston';
 import expressWinston from 'express-winston';
 
-// создадим логер запросов
 const requestLogger = expressWinston.logger({
   transports: [
     new winston.transports.File({

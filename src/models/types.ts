@@ -11,7 +11,6 @@ export interface IUser {
 }
 
 export interface UserModel extends Model<IUser> {
-  // eslint-disable-next-line no-unused-vars
   findUserByCredentials: (email: string, password: string) =>
     Promise<Document<unknown, any, IUser>>;
 }
