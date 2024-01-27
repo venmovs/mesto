@@ -17,12 +17,6 @@ const handleAuthError = (next: NextFunction) => {
   next(new AuthorizationError('Необходима авторизация'));
 };
 const auth = (req: SessionRequest, res: Response, next: NextFunction) => {
-  const { authorization } = req.headers;
-
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return handleAuthError(next);
-  }
-
   const token = req.cookies.jwt;
 
   if (!token) {

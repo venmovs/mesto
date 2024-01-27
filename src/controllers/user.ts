@@ -51,7 +51,7 @@ const getUser = (req: Request, res: Response, next: NextFunction) => {
         return next(new ValidationError(ERROR_MESSAGE_BAD_REQUEST));
       }
       if (error instanceof Error.DocumentNotFoundError) {
-        throw new NotFoundError(ERROR_MESSAGE_ID);
+        return next(new NotFoundError(ERROR_MESSAGE_ID));
       }
       return next(new ServerError(ERROR_MESSAGE_SERVER));
     });

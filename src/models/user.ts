@@ -3,6 +3,9 @@ import validator from 'validator';
 import bcrypt from 'bcrypt';
 import { IUser, UserModel } from './types';
 import { ERROR_MESSAGE_LOGIN_DATA } from '../helpers/constants/messages';
+import errors from '../errors';
+
+const { AuthorizationError } = errors;
 
 const userSchema = new Schema<IUser>({
   name: {
@@ -45,13 +48,13 @@ userSchema.static('findUserByCredentials', function (email: string, password: st
     .select('+password')
     .then((user: IUser | undefined) => {
       if (!user) {
-        return Promise.reject(new Error(ERROR_MESSAGE_LOGIN_DATA));
+        return Promise.reject(new AuthorizationError(ERROR_MESSAGE_LOGIN_DATA));
       }
 
       return bcrypt.compare(password, user.password)
         .then((matched: boolean) => {
           if (!matched) {
-            return Promise.reject(new Error(ERROR_MESSAGE_LOGIN_DATA));
+            return Promise.reject(new AuthorizationError(ERROR_MESSAGE_LOGIN_DATA));
           }
 
           return user;

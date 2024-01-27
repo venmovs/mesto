@@ -67,10 +67,9 @@ const login = (req: Request, res: Response, next: NextFunction) => {
     })
     .catch((error) => {
       if (error.name === 'AuthorizationError') {
-        throw new AuthorizationError(ERROR_MESSAGE_LOGIN_DATA);
-      } else {
-        return next(error);
+        return next(new AuthorizationError(ERROR_MESSAGE_LOGIN_DATA));
       }
+      return next(error);
     });
 };
 
