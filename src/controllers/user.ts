@@ -1,96 +1,113 @@
-import { Request, Response } from 'express';
+import { NextFunction, Response, Request } from 'express';
+import { Error } from 'mongoose';
 import models from '../models';
-import { STATUS_BAD_REQUEST, STATUS_ERROR_ID, STATUS_ERROR_SERVER } from '../helpers/constants/statuses';
-import { ERROR_MESSAGE_BAD_REQUEST, ERROR_MESSAGE_ID, ERROR_MESSAGE_SERVER } from '../helpers/constants/messages';
-import temporaryUserId from '../helpers/temporaryUserId';
+import {
+  STATUS_SUCCESS,
+} from '../helpers/constants/statuses';
+import {
+  ERROR_MESSAGE_BAD_REQUEST,
+  ERROR_MESSAGE_ID,
+  ERROR_MESSAGE_LOGIN_DATA,
+  ERROR_MESSAGE_SERVER,
+} from '../helpers/constants/messages';
+import errors from '../errors';
+import { SessionRequest } from '../models/types';
 
 const User = models.user;
-const createUser = (req: Request, res: Response) => {
-  const { name, about, avatar } = req.body;
+const {
+  NotFoundError, ValidationError, ServerError,
+} = errors;
 
-  return User.create({ name, about, avatar })
-    .then((user) => res.send({ data: user }))
-    .catch((error) => {
-      if (error.name === 'ValidationError') {
-        res.status(STATUS_BAD_REQUEST).send({
-          message: ERROR_MESSAGE_BAD_REQUEST,
-        });
-      } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
-      }
-    });
-};
-
-const getUsers = (req: Request, res: Response) => User.find({})
-  .then((users) => res.send(users))
-  .catch(() => res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER }));
-
-const getUser = (req: Request, res: Response) => {
-  const { userId } = req.params;
+const getUserMe = (
+  req: SessionRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  console.info(req);
+  const userId = req.user?._id;
   return User.findById(userId)
     .then((user) => {
       if (!user) {
-        res.status(STATUS_ERROR_ID).send({ message: ERROR_MESSAGE_ID });
+        throw new NotFoundError(ERROR_MESSAGE_ID);
       } else {
-        res.send({ data: user });
+        res.status(STATUS_SUCCESS).send(user);
       }
     })
+    .catch((error) => next(error));
+};
+
+const getUsers = (req: Request, res: Response, next: NextFunction) => User.find({})
+  .then((users) => res.send(users))
+  .catch(() => next(new ServerError(ERROR_MESSAGE_SERVER)));
+
+const getUser = (req: Request, res: Response, next: NextFunction) => {
+  const { userId } = req.params;
+  return User.findById(userId)
+    .orFail()
     .catch((error) => {
-      if (error.name === 'CastError') {
-        res.status(STATUS_BAD_REQUEST).send({ message: STATUS_BAD_REQUEST });
-      } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+      if (error instanceof Error.CastError) {
+        return next(new ValidationError(ERROR_MESSAGE_BAD_REQUEST));
       }
+      if (error instanceof Error.DocumentNotFoundError) {
+        throw new NotFoundError(ERROR_MESSAGE_ID);
+      }
+      return next(new ServerError(ERROR_MESSAGE_SERVER));
     });
 };
 
-const updateUserInfo = (req: Request, res: Response) => {
-  const owner = temporaryUserId(req);
-  const { name, about } = req.body;
-  return User.findByIdAndUpdate(owner, { name, about }, { new: true, runValidators: true })
-    .then((user) => {
-      if (!user) {
-        res.status(STATUS_ERROR_ID).send({ message: ERROR_MESSAGE_ID });
-      } else {
-        res.send(user);
-      }
-    })
-    .catch((error) => {
-      if (error.name === 'ValidationError') {
-        res.status(STATUS_BAD_REQUEST).send({
-          message: ERROR_MESSAGE_BAD_REQUEST,
-        });
-      } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
-      }
-    });
+const updateUserInfo = async (req: SessionRequest, res: Response, next: NextFunction) => {
+  try {
+    const { name, about } = req.body;
+    const user = await User.findByIdAndUpdate(
+      { _id: req.user?._id },
+      { name, about },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+
+    if (!user) {
+      throw new NotFoundError(ERROR_MESSAGE_ID);
+    }
+    return res.send(user);
+  } catch (error) {
+    if (error instanceof Error.DocumentNotFoundError) {
+      return next(new NotFoundError(ERROR_MESSAGE_ID));
+    }
+    if (error instanceof Error.ValidationError || error instanceof Error.CastError) {
+      return next(new ValidationError(ERROR_MESSAGE_LOGIN_DATA));
+    }
+    return next(new ServerError(ERROR_MESSAGE_SERVER));
+  }
 };
+const updateUserAvatar = async (req: SessionRequest, res: Response, next: NextFunction) => {
+  try {
+    const { avatar } = req.body;
+    const user = await User.findByIdAndUpdate(
+      { _id: req.user?._id },
+      { avatar },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
 
-const updateUserAvatar = (req: Request, res: Response) => {
-  const owner = temporaryUserId(req);
-  const { avatar } = req.body;
-
-  return User.findByIdAndUpdate(owner, { avatar }, { new: true, runValidators: true })
-    .then((user) => {
-      if (!user) {
-        res
-          .status(STATUS_ERROR_ID)
-          .send({ message: ERROR_MESSAGE_ID });
-      } else {
-        res.send(user);
-      }
-    })
-    .catch((error) => {
-      if (error.name === 'ValidationError') {
-        res.status(STATUS_BAD_REQUEST).send({
-          message: ERROR_MESSAGE_BAD_REQUEST,
-        });
-      } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
-      }
-    });
+    if (!user) {
+      throw new NotFoundError(ERROR_MESSAGE_ID);
+    }
+    return res.send(user);
+  } catch (error) {
+    if (error instanceof Error.DocumentNotFoundError) {
+      return next(new NotFoundError(ERROR_MESSAGE_ID));
+    }
+    if (error instanceof Error.ValidationError || error instanceof Error.CastError) {
+      return next(new ValidationError(ERROR_MESSAGE_LOGIN_DATA));
+    }
+    return next(new ServerError(ERROR_MESSAGE_SERVER));
+  }
 };
 
 export default {
-  createUser, getUsers, getUser, updateUserInfo, updateUserAvatar,
+  getUsers, getUser, updateUserInfo, updateUserAvatar, getUserMe,
 };

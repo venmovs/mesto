@@ -1,55 +1,65 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
+import { Error } from 'mongoose';
 import {
-  STATUS_BAD_REQUEST,
-  STATUS_CREATED, STATUS_ERROR_ID, STATUS_ERROR_SERVER,
+  STATUS_CREATED, STATUS_ERROR_ID, STATUS_ERROR_SERVER, STATUS_SUCCESS,
 } from '../helpers/constants/statuses';
 import { ERROR_MESSAGE_BAD_REQUEST, ERROR_MESSAGE_ID, ERROR_MESSAGE_SERVER } from '../helpers/constants/messages';
 import models from '../models';
-import temporaryUserId from '../helpers/temporaryUserId';
+import { SessionRequest } from '../models/types';
+import errors from '../errors';
+
+const {
+  ValidationError, ServerError, ForbiddenError, NotFoundError,
+} = errors;
 
 const Card = models.card;
-const getCards = (req: Request, res: Response) => Card.find({})
+const getCards = (req: Request, res: Response, next: NextFunction) => Card.find({})
   .then((cards) => res.send({ data: cards }))
-  .catch(() => res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER }));
+  .catch(() => next(new ServerError(ERROR_MESSAGE_SERVER)));
 
-const createCard = (req: Request, res: Response) => {
+const createCard = (req: SessionRequest, res: Response, next: NextFunction) => {
   const { name, link } = req.body;
-  const owner = temporaryUserId(req);
+  const owner = { _id: req.user?._id };
 
   return Card.create({ name, link, owner })
     .then((card) => res.status(STATUS_CREATED).send({ data: card }))
     .catch((error) => {
-      if (error.name === 'ValidationError') {
-        res.status(STATUS_BAD_REQUEST).send({
-          message: ERROR_MESSAGE_BAD_REQUEST,
-        });
+      if (error instanceof Error.ValidationError) {
+        next(new ValidationError(ERROR_MESSAGE_ID));
       } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+        next(new ServerError(ERROR_MESSAGE_SERVER));
       }
     });
 };
-const deleteCard = (req: Request, res: Response) => {
+const deleteCard = (req: SessionRequest, res: Response, next: NextFunction) => {
   const { cardId } = req.params;
 
-  return Card.findByIdAndDelete(cardId)
+  Card.findById(cardId)
+    .orFail()
     .then((card) => {
-      if (!card) {
-        res.status(STATUS_ERROR_ID).send(ERROR_MESSAGE_ID);
+      if (req.user?._id !== card.owner) {
+        next(new ForbiddenError(ERROR_MESSAGE_BAD_REQUEST));
       } else {
-        res.send({ data: card });
+        Card.findByIdAndDelete(cardId)
+          .then(() => res.status(STATUS_SUCCESS).send({ data: card }))
+          .catch(() => {
+            res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+          });
       }
     })
     .catch((error) => {
-      if (error.name === 'CastError') {
-        res.status(STATUS_BAD_REQUEST).send({ message: STATUS_BAD_REQUEST });
+      if (error instanceof Error.DocumentNotFoundError) {
+        next(new NotFoundError(ERROR_MESSAGE_ID));
+      } else if (error instanceof Error.CastError) {
+        next(new ValidationError(ERROR_MESSAGE_ID));
       } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+        next(new ServerError(ERROR_MESSAGE_SERVER));
       }
     });
 };
 
-const likeCard = (req: Request, res: Response) => {
-  const owner = temporaryUserId(req);
+const likeCard = (req: SessionRequest, res: Response, next: NextFunction) => {
+  const owner = { _id: req.user?._id };
   const { cardId } = req.params;
 
   return Card.findByIdAndUpdate(
@@ -67,16 +77,16 @@ const likeCard = (req: Request, res: Response) => {
       }
     })
     .catch((error) => {
-      if (error.name === 'CastError') {
-        res.status(STATUS_BAD_REQUEST).send({ message: STATUS_BAD_REQUEST });
+      if (error instanceof Error.CastError) {
+        next(new ValidationError(ERROR_MESSAGE_ID));
       } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+        next(new ServerError(ERROR_MESSAGE_SERVER));
       }
     });
 };
 
-const dislikeCard = (req: Request, res: Response) => {
-  const owner = temporaryUserId(req);
+const dislikeCard = (req: SessionRequest, res: Response, next: NextFunction) => {
+  const owner = { _id: req.user?._id };
 
   return Card.findByIdAndUpdate(
     req.params.cardId,
@@ -93,10 +103,12 @@ const dislikeCard = (req: Request, res: Response) => {
       }
     })
     .catch((error) => {
-      if (error.name === 'CastError') {
-        res.status(STATUS_BAD_REQUEST).send({ message: STATUS_BAD_REQUEST });
+      if (error instanceof Error.DocumentNotFoundError) {
+        next(new NotFoundError(ERROR_MESSAGE_ID));
+      } else if (error instanceof Error.CastError) {
+        next(new ValidationError(ERROR_MESSAGE_ID));
       } else {
-        res.status(STATUS_ERROR_SERVER).send({ message: ERROR_MESSAGE_SERVER });
+        next(new ServerError(ERROR_MESSAGE_SERVER));
       }
     });
 };
